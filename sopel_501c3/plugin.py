@@ -66,8 +66,8 @@ def _check_pub78_updates_impl(bot, force=False, background=True):
         (delta := (now - last_update)).days >= bot.settings.five01c3.update_interval
     ):
         LOGGER.info(
-            'Update interval of %d days has not yet elapsed; delta is %r. '
-            'Skipping Publication 78 data update.',
+            'Skipping Publication 78 data update. '
+            'Update interval of %d days has not yet elapsed; delta is %s.',
             bot.settings.five01c3.update_interval,
             delta,
         )

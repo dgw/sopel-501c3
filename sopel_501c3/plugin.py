@@ -37,17 +37,18 @@ def setup(bot):
     # Slightly stale data is better than delaying startup for up to several
     # minutes if the `update_interval` has elapsed
     if not bot.db.get_plugin_value('501c3', 'last_update', 0):
-        check_pub78_updates(bot)
+        check_pub78_updates(bot, force=True, background=False)
 
 
 @plugin.interval(3600)
-def check_pub78_updates(bot):
+def check_pub78_updates(bot, force=False, background=True):
     # wrapper triggered by interval, but the actual work is in a separate
     # function that can be run in a new thread
     job = Thread(
         name='pub78_db',
         target=_check_pub78_updates_impl,
         args=(bot,),
+        kwargs={'force': force, 'background': background},
     )
     LOGGER.info('Starting Publication 78 update check in a new thread')
     job.start()
@@ -55,18 +56,18 @@ def check_pub78_updates(bot):
     job.join()
 
 
-def _check_pub78_updates_impl(bot):
+def _check_pub78_updates_impl(bot, force=False, background=True):
     now = datetime.now(timezone.utc)
     last_update = datetime.fromtimestamp(
         bot.db.get_plugin_value('501c3', 'last_update', 0),
         timezone.utc,
     )
-    if not (
+    if not force and not (
         (delta := (now - last_update)).days >= bot.settings.five01c3.update_interval
     ):
         LOGGER.info(
             'Update interval of %d days has not yet elapsed; delta is %r. '
-            'Skipping Publication 78 data update check.',
+            'Skipping Publication 78 data update.',
             bot.settings.five01c3.update_interval,
             delta,
         )
@@ -83,13 +84,17 @@ def _check_pub78_updates_impl(bot):
         bot.settings.five01c3.zip_url,
         bot.settings.five01c3.data_name,
     )
-    bot.memory[NPO_DB].bulk_add_NPOs(gen)
+    bot.memory[NPO_DB].bulk_add_NPOs(
+        gen,
+        1000 if background else 10000,
+        background=background,
+    )
 
     # finally, store the last_update timestamp (loading the data is expected to
     # take a few moments, but the difference between when we start (`now`) and
     # when we finish is immaterial on the check interval time scale of days)
     bot.db.set_plugin_value('501c3', 'last_update', now.timestamp())
-    LOGGER.info('Publication 78 update check complete')
+    LOGGER.info('Publication 78 update complete')
 
 
 def shutdown(bot):

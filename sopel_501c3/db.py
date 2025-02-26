@@ -6,6 +6,8 @@ Licensed under the Eiffel Forum License 2.
 """
 from __future__ import annotations
 
+import itertools
+import time
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, String
@@ -57,19 +59,42 @@ class NPODB:
         self.db = bot.db
         BASE.metadata.create_all(self.db.engine)
 
-    def bulk_add_NPOs(self, it: Iterable[NPO], batch_size: int = 10000):
+    def bulk_add_NPOs(
+        self,
+        it: Iterable[NPO],
+        batch_size: int = 10000,
+        background: bool = True,
+    ):
         """Add multiple nonprofit organizations to the database."""
-        counter = 0
-        with self.db.session() as session:
-            for npo in it:
-                session.merge(NPOs.from_npo(npo))
-                counter += 1
-                if counter % batch_size == 0:
-                    LOGGER.info('Processed %d NPOs so far', counter)
-                    session.commit()
+        if background:
+            LOGGER.info('Processing bulk NPO add in the background')
+        else:
+            LOGGER.info('Processing bulk NPO add in the foreground')
+        LOGGER.info('Bulk NPO add batch size: %d', batch_size)
 
-            LOGGER.info('Finished processing %d NPOs', counter)
+        batch_iterator = iter(it)
+        batches = 0
+        with self.db.session() as session:
+            for first in batch_iterator:
+                batch = itertools.chain(
+                    [first], itertools.islice(batch_iterator, batch_size - 1)
+                )
+                for npo in batch:
+                    session.merge(NPOs.from_npo(npo))
+
+                batches += 1
+                session.commit()
+                LOGGER.info('Bulk added %d NPOs so far', batches * batch_size)
+
+                if background:
+                    time.sleep(1)
+
             session.commit()
+
+        LOGGER.info(
+            'Finished bulk adding %d NPOs',
+            batches * batch_size + len(batch),
+        )
 
     def add_npo(self, npo: NPO):
         """Add a new nonprofit organization to the database."""

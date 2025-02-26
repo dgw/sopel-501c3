@@ -84,7 +84,14 @@ class NPODB:
 
                 batches += 1
                 session.commit()
-                LOGGER.info('Bulk added %d NPOs so far', batches * batch_size)
+
+                # report progress every 10 batches, or after every batch if the
+                # batch size is over 10k
+                if batch_size > 10000 or batches % 10 == 0:
+                    LOGGER.debug(
+                        'Bulk added %d NPOs so far',
+                        batches * batch_size,
+                    )
 
                 if background:
                     time.sleep(1)

@@ -76,9 +76,13 @@ class NPODB:
         batches = 0
         with self.db.session() as session:
             for first in batch_iterator:
-                batch = itertools.chain(
-                    [first], itertools.islice(batch_iterator, batch_size - 1)
+                batch = list(
+                    itertools.chain(
+                        [first],
+                        itertools.islice(batch_iterator, batch_size - 1),
+                    )
                 )
+
                 for npo in batch:
                     session.merge(NPOs.from_npo(npo))
 

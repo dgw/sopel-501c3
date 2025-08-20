@@ -123,5 +123,5 @@ def npo_lookup(bot, trigger):
         elif city and not state:
             trailing += f'{city} '
         trailing += f'({npo.country})'
-        trailing += f' | https://projects.propublica.com/nonprofits/organizations/{npo.ein}'
+        trailing += f' | https://projects.propublica.org/nonprofits/organizations/{npo.ein}'
         bot.say(body, truncation='…', trailing=trailing)
